@@ -52,7 +52,7 @@ local hoverSound = createSound("10066931761", "HoverSound")
 -- Cooldown animasi
 local cooldownFrame = snakeShootButton:FindFirstChild("Cooldown")
 local uiGradient = cooldownFrame and cooldownFrame:FindFirstChild("UIGradient")
-local cooldownTime = 1
+local cooldownTime = 0
 local onCooldown = false
 
 local function startCooldown()
