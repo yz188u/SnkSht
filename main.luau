@@ -12,17 +12,17 @@ local abilitiesFolder = player:WaitForChild("PlayerGui"):WaitForChild("InGameUI"
 
 -- Setup tombol
 local originalButton = abilitiesFolder:WaitForChild("1")
-local styleChangerButton = originalButton:Clone()
-styleChangerButton.Name = "StyleChanger"
-styleChangerButton.Parent = abilitiesFolder
+local snakeShootButton = originalButton:Clone()
+snakeShootButton.Name = "SnakeShoot"
+snakeShootButton.Parent = abilitiesFolder
 
 -- Ubah teks & keybind
-local timerLabel = styleChangerButton:FindFirstChild("Timer")
+local timerLabel = snakeShootButton:FindFirstChild("Timer")
 if timerLabel and timerLabel:IsA("TextLabel") then
 	timerLabel.Text = snakeActive and "SnakeShoot: ON" or "SnakeShoot: OFF"
 end
 
-local keybindLabel = styleChangerButton:FindFirstChild("Keybind")
+local keybindLabel = snakeShootButton:FindFirstChild("Keybind")
 if keybindLabel and keybindLabel:IsA("TextLabel") then
     keybindLabel.Text = currentKeybind.Name
 
@@ -42,7 +42,7 @@ local function createSound(id, name)
 	sound.SoundId = "rbxassetid://" .. id
 	sound.Volume = 1
 	sound.Name = name
-	sound.Parent = styleChangerButton
+	sound.Parent = snakeShootButton
 	return sound
 end
 
@@ -50,7 +50,7 @@ local clickSound = createSound("10066968815", "ClickSound")
 local hoverSound = createSound("10066931761", "HoverSound")
 
 -- Cooldown animasi
-local cooldownFrame = styleChangerButton:FindFirstChild("Cooldown")
+local cooldownFrame = snakeShootButton:FindFirstChild("Cooldown")
 local uiGradient = cooldownFrame and cooldownFrame:FindFirstChild("UIGradient")
 local cooldownTime = 1
 local onCooldown = false
@@ -77,22 +77,22 @@ end
 
 local function animatePress()
 	if pressTween then pressTween:Cancel() end
-	pressTween = createTween(styleChangerButton, {
-		Size = styleChangerButton.Size + UDim2.new(0.1, 0, 0.1, 0)
+	pressTween = createTween(snakeShootButton, {
+		Size = snakeShootButton.Size + UDim2.new(0.1, 0, 0.1, 0)
 	}, 0.1)
 	pressTween:Play()
 end
 
 local function animateRelease()
 	if releaseTween then releaseTween:Cancel() end
-	releaseTween = createTween(styleChangerButton, {
+	releaseTween = createTween(snakeShootButton, {
 		Size = originalButton.Size
 	}, 0.1)
 	releaseTween:Play()
 end
 
 -- Hover Sound
-styleChangerButton.MouseEnter:Connect(function()
+snakeShootButton.MouseEnter:Connect(function()
 	hoverSound:Play()
 end)
 
@@ -110,12 +110,12 @@ if keybindLabel and keybindLabel:IsA("TextLabel") then
 end
 
 -- Support tekan mobile/PC
-styleChangerButton.MouseButton1Down:Connect(animatePress)
-styleChangerButton.MouseButton1Up:Connect(animateRelease)
-styleChangerButton.InputBegan:Connect(function(input)
+snakeShootButton.MouseButton1Down:Connect(animatePress)
+snakeShootButton.MouseButton1Up:Connect(animateRelease)
+snakeShootButton.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then animatePress() end
 end)
-styleChangerButton.InputEnded:Connect(function(input)
+snakeShootButton.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then animateRelease() end
 end)
 
@@ -134,10 +134,10 @@ local function cycleStyle()
 	startTime = tick()
 	clickSound:Play()
 	timerLabel.Text = snakeActive and "SnakeShoot: ON" or "SnakeShoot: OFF"
-	styleChangerButton.BackgroundColor3 = snakeActive and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(255, 255, 255)
+	snakeShootButton.BackgroundColor3 = snakeActive and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(255, 255, 255)
 end
 
-styleChangerButton.MouseButton1Click:Connect(function()
+snakeShootButton.MouseButton1Click:Connect(function()
 	if onCooldown then return end
 	cycleStyle()
 	startCooldown()
