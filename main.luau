@@ -22,7 +22,7 @@ end
 
 local keybindLabel = styleChangerButton:FindFirstChild("Keybind")
 if keybindLabel and keybindLabel:IsA("TextLabel") then
-	keybindLabel.Text = "T"
+	keybindLabel.Text = currentKeybind.Name
 end
 
 -- Tambah Sound
