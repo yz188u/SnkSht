@@ -3,7 +3,9 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local currentKeybind = Enum.KeyCode.T -- default keybind
+
+-- Gunakan shared keybind jika ada, default T
+local currentKeybind = shared.SnakeShootKeybind or Enum.KeyCode.T
 
 local player = Players.LocalPlayer
 local abilitiesFolder = player:WaitForChild("PlayerGui"):WaitForChild("InGameUI"):WaitForChild("Bottom"):WaitForChild("Abilities")
@@ -22,7 +24,16 @@ end
 
 local keybindLabel = styleChangerButton:FindFirstChild("Keybind")
 if keybindLabel and keybindLabel:IsA("TextLabel") then
-	keybindLabel.Text = currentKeybind.Name
+    keybindLabel.Text = currentKeybind.Name
+
+    -- Perbarui label saat user ganti keybind lewat UI
+    task.spawn(function()
+        while task.wait(0.2) do
+            if shared.SnakeShootKeybind and keybindLabel.Text ~= shared.SnakeShootKeybind.Name then
+                keybindLabel.Text = shared.SnakeShootKeybind.Name
+            end
+        end
+    end)
 end
 
 -- Tambah Sound
@@ -41,7 +52,7 @@ local hoverSound = createSound("10066931761", "HoverSound")
 -- Cooldown animasi
 local cooldownFrame = styleChangerButton:FindFirstChild("Cooldown")
 local uiGradient = cooldownFrame and cooldownFrame:FindFirstChild("UIGradient")
-local cooldownTime = 0
+local cooldownTime = 1
 local onCooldown = false
 
 local function startCooldown()
@@ -134,6 +145,10 @@ end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
+
+	-- Refresh keybind dari shared jika tersedia
+	currentKeybind = shared.SnakeShootKeybind or currentKeybind
+
 	if input.KeyCode == currentKeybind then
 		if not onCooldown then
 			cycleStyle()
