@@ -4,6 +4,9 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+-- GUI protection
+local hui = gethui and gethui() or game:GetService("CoreGui")
+
 -- Gunakan shared keybind jika ada, default T
 local currentKeybind = shared.SnakeShootKeybind or Enum.KeyCode.T
 
@@ -15,6 +18,7 @@ local originalButton = abilitiesFolder:WaitForChild("1")
 local snakeShootButton = originalButton:Clone()
 snakeShootButton.Name = "SnakeShoot"
 snakeShootButton.Parent = abilitiesFolder
+snakeShootButton:SetAttribute("HUI_Controlled", true)
 
 -- Ubah teks & keybind
 local timerLabel = snakeShootButton:FindFirstChild("Timer")
