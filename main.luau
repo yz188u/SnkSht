@@ -1,215 +1,161 @@
 local function SafeHUI()
-	if gethui then
-		return gethui()
-	elseif game.CoreGui then
-		return game.CoreGui
-	elseif get_hidden_gui then
-		local g = get_hidden_gui()
-		g.Parent = game.CoreGui
-		return g
-	else
-		local stealth = Instance.new("ScreenGui")
-		stealth.Name = "HUI_SAFE_"..math.random(10000,99999)
-		stealth.ResetOnSpawn = false
-		stealth.IgnoreGuiInset = true
-		stealth.Parent = game:GetService("CoreGui")
-		return stealth
-	end
+	if gethui then return gethui()
+	elseif game.CoreGui then return game.CoreGui end
+
+	local ui = Instance.new("ScreenGui")
+	ui.Name = "HUI_SAFE_"..math.random(9999)
+	ui.ResetOnSpawn = false
+	ui.Parent = game:GetService("CoreGui")
+	return ui
 end
 
-local HUI = SafeHUI() -- UI Hidden kamu siap dipakai
+local HUI = SafeHUI()
 
--- Layanan Roblox
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
 
-local currentKeybind = shared.SnakeShootKeybind or Enum.KeyCode.T
 local player = Players.LocalPlayer
-
--- UI posisi lama
-local abilitiesFolder = player:WaitForChild("PlayerGui")
-	:WaitForChild("InGameUI")
-	:WaitForChild("Bottom")
-	:WaitForChild("Abilities")
-
--- bikin tombol baru
-local originalButton = abilitiesFolder:WaitForChild("1")
-local snakeShootButton = originalButton:Clone()
-snakeShootButton.Name = "SnakeShoot"
-snakeShootButton.Parent = HUI  -- bisa kamu ganti ke HUI kalau pengen invisible
--- Ubah teks & keybind
-local timerLabel = snakeShootButton:FindFirstChild("Timer")
-if timerLabel and timerLabel:IsA("TextLabel") then
-	timerLabel.Text = snakeActive and "SnakeShoot: ON" or "SnakeShoot: OFF"
-end
-
-local keybindLabel = snakeShootButton:FindFirstChild("Keybind")
-if keybindLabel and keybindLabel:IsA("TextLabel") then
-    keybindLabel.Text = currentKeybind.Name
-
-    -- Perbarui label saat user ganti keybind lewat UI
-    task.spawn(function()
-        while task.wait(0.2) do
-            if shared.SnakeShootKeybind and keybindLabel.Text ~= shared.SnakeShootKeybind.Name then
-                keybindLabel.Text = shared.SnakeShootKeybind.Name
-            end
-        end
-    end)
-end
-
--- Tambah Sound
-local function createSound(id, name)
-	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://" .. id
-	sound.Volume = 1
-	sound.Name = name
-	sound.Parent = snakeShootButton
-	return sound
-end
-
-local clickSound = createSound("10066968815", "ClickSound")
-local hoverSound = createSound("10066931761", "HoverSound")
-
--- Cooldown animasi
-local cooldownFrame = snakeShootButton:FindFirstChild("Cooldown")
-local uiGradient = cooldownFrame and cooldownFrame:FindFirstChild("UIGradient")
-local cooldownTime = 0
-local onCooldown = false
-
-local function startCooldown()
-	if not cooldownFrame or not uiGradient then return end
-	onCooldown = true
-	cooldownFrame.Visible = true
-	uiGradient.Offset = Vector2.new(0, 0)
-	local tweenInfo = TweenInfo.new(cooldownTime, Enum.EasingStyle.Linear)
-	local tween = TweenService:Create(uiGradient, tweenInfo, { Offset = Vector2.new(0, 1) })
-	tween:Play()
-	tween.Completed:Wait()
-	cooldownFrame.Visible = false
-	onCooldown = false
-end
-
--- Tween klik tombol
-local pressTween, releaseTween
-local function createTween(instance, goal, time)
-	local info = TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	return TweenService:Create(instance, info, goal)
-end
-
-local function animatePress()
-	if pressTween then pressTween:Cancel() end
-	pressTween = createTween(snakeShootButton, {
-		Size = snakeShootButton.Size + UDim2.new(0.1, 0, 0.1, 0)
-	}, 0.1)
-	pressTween:Play()
-end
-
-local function animateRelease()
-	if releaseTween then releaseTween:Cancel() end
-	releaseTween = createTween(snakeShootButton, {
-		Size = originalButton.Size
-	}, 0.1)
-	releaseTween:Play()
-end
-
--- Hover Sound
-snakeShootButton.MouseEnter:Connect(function()
-	hoverSound:Play()
-end)
-
--- Keybind tampil saat keyboard
-if keybindLabel and keybindLabel:IsA("TextLabel") then
-	keybindLabel.Visible = false
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			keybindLabel.Visible = true
-		elseif input.UserInputType == Enum.UserInputType.Touch then
-			keybindLabel.Visible = false
-		end
-	end)
-end
-
--- Support tekan mobile/PC
-snakeShootButton.MouseButton1Down:Connect(animatePress)
-snakeShootButton.MouseButton1Up:Connect(animateRelease)
-snakeShootButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then animatePress() end
-end)
-snakeShootButton.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then animateRelease() end
-end)
-
---------------------------------------------------------------------------------
--- === SNAKE SHOOT ===
---------------------------------------------------------------------------------
 local snakeActive = false
+local cooldown = 0 -- atur CD
+local onCooldown = false
 local zigzagAmplitude = 3
 local zigzagSpeed = 100
 local basePower = 500
 local startTime = tick()
 local targetGoal = nil
 
-local function cycleStyle()
-	snakeActive = not snakeActive
-	startTime = tick()
-	clickSound:Play()
-	timerLabel.Text = snakeActive and "SnakeShoot: ON" or "SnakeShoot: OFF"
-	snakeShootButton.BackgroundColor3 = snakeActive and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(255, 255, 255)
+local currentKeybind = shared.SnakeShootKeybind or Enum.KeyCode.T
+
+local UI = Instance.new("ScreenGui",HUI)
+UI.Name = "SnakeUI_"..math.random(1000,9999)
+UI.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+local Frame = Instance.new("Frame",UI)
+Frame.Size = UDim2.new(0,50,0,50)
+Frame.Position = UDim2.new(0.02,0,0.45,0)
+Frame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+
+Instance.new("UICorner",Frame).CornerRadius = UDim.new(0,12)
+
+local glow = Instance.new("UIStroke",Frame)
+glow.Thickness = 2.5
+glow.Color = Color3.fromRGB(180,0,255)
+
+local grad = Instance.new("UIGradient",Frame)
+grad.Rotation = 90
+grad.Color = ColorSequence.new(Color3.fromRGB(120,0,255),Color3.fromRGB(200,0,100))
+grad.Transparency = NumberSequence.new(0.15)
+
+local Button = Instance.new("TextButton",Frame)
+Button.Size = UDim2.new(1,0,1,0)
+Button.BackgroundTransparency = 1
+Button.TextScaled = true
+Button.TextColor3 = Color3.new(1,1,1)
+Button.Font = Enum.Font.GothamBold
+Button.Text = "SnakeShoot: OFF"
+Button.ZIndex = 20
+
+local function Sound(ID)
+	local s=Instance.new("Sound",Frame); s.SoundId="rbxassetid://"..ID; s.Volume=1; return s
 end
 
-snakeShootButton.MouseButton1Click:Connect(function()
-	if onCooldown then return end
-	cycleStyle()
-	startCooldown()
+local ClickSFX=Sound(10066968815)
+local HoverSFX=Sound(10066931761)
+
+local DragBar = Instance.new("Frame", Frame)
+DragBar.Size = UDim2.new(1,0,0,5) -- tinggi 10px sebagai area drag
+DragBar.Position = UDim2.new(0,0,0,55) -- di atas tombol
+DragBar.BackgroundTransparency = 0.7
+DragBar.BackgroundColor3 = Color3.fromRGB(500,500,500)
+
+local corner = Instance.new("UICorner",DragBar)
+corner.CornerRadius = UDim.new(0,6)
+
+local dragging = false
+local dragStart, startPos
+
+local function updateDrag(input)
+	local delta = input.Position - dragStart
+	Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+DragBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = Frame.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
 end)
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-
-	-- Refresh keybind dari shared jika tersedia
-	currentKeybind = shared.SnakeShootKeybind or currentKeybind
-
-	if input.KeyCode == currentKeybind then
-		if not onCooldown then
-			cycleStyle()
-			startCooldown()
-		end
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updateDrag(input)
 	end
+end)
+
+Button.MouseEnter:Connect(function()
+	HoverSFX:Play()
+	TweenService:Create(Frame,TweenInfo.new(.15),{Size=UDim2.new(0,55,0,50)}):Play()
+end)
+Button.MouseLeave:Connect(function()
+	TweenService:Create(Frame,TweenInfo.new(.15),{Size=UDim2.new(0,50,0,50)}):Play()
+end)
+
+local function ToggleShoot()
+	if onCooldown then return end
+
+	snakeActive = not snakeActive
+	ClickSFX:Play()
+
+	Button.Text = snakeActive and "SnakeShoot: ON" or "SnakeShoot: OFF"
+	Frame.BackgroundColor3 = snakeActive and Color3.fromRGB(50,200,100) or Color3.fromRGB(15,15,20)
+
+	onCooldown = true
+	task.delay(cooldown,function() 
+		onCooldown=false 
+	end)
+end
+
+Button.MouseButton1Click:Connect(ToggleShoot)
+
+UIS.InputBegan:Connect(function(input,gp)
+	if gp then return end
+	currentKeybind = shared.SnakeShootKeybind or currentKeybind
+	if input.KeyCode==currentKeybind then ToggleShoot() end
 end)
 
 RunService.Heartbeat:Connect(function()
 	if not snakeActive then return end
+
 	local char = player.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 
-	local ball = workspace:FindFirstChild("Football")
+	local ball = workspace:FindFirstChild("Football") 
 	if not ball then return end
 
-	if tick() - startTime > 0.1 then
-		startTime = tick()
-		local team = tostring(player.Team)
-		local goalList = (team == "Home") and {
-			Vector3.new(-238, 11, -69),
-			Vector3.new(-238, 11, -33)
+	if tick()-startTime>.1 then
+		startTime=tick()
+		local team=tostring(player.Team)
+		local goal=(team=="Home") and {
+			Vector3.new(-238,11,-69),Vector3.new(-238,11,-33)
 		} or {
-			Vector3.new(317, 11, -30),
-			Vector3.new(315, 11, -67)
+			Vector3.new(317,11,-30),Vector3.new(315,11,-67)
 		}
-		targetGoal = goalList[math.random(1, #goalList)]
+		targetGoal = goal[math.random(1,#goal)]
 	end
 
 	if not targetGoal then return end
-
-	local dirToGoal = (targetGoal - ball.Position).Unit
-	local timeNow = tick() - startTime
-	local verticalOffset = math.sin(timeNow * zigzagSpeed) * zigzagAmplitude
-	local zigzagVector = Vector3.new(0, verticalOffset, 0)
-	local finalDirection = (dirToGoal + zigzagVector).Unit
-
-	ball.AssemblyLinearVelocity = finalDirection * basePower
-	ball.AssemblyAngularVelocity = Vector3.zero
-	ball.AssemblyGravityScale = 0
+	local dir=(targetGoal-ball.Position).Unit
+	local z=math.sin((tick()-startTime)*zigzagSpeed)*zigzagAmplitude
+	ball.AssemblyLinearVelocity=(dir+Vector3.new(0,z,0)).Unit*basePower
+	ball.AssemblyAngularVelocity=Vector3.zero
+	ball.AssemblyGravityScale=0
 end)
