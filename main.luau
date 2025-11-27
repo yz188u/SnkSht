@@ -1,25 +1,44 @@
+local function SafeHUI()
+	if gethui then
+		return gethui()
+	elseif game.CoreGui then
+		return game.CoreGui
+	elseif get_hidden_gui then
+		local g = get_hidden_gui()
+		g.Parent = game.CoreGui
+		return g
+	else
+		local stealth = Instance.new("ScreenGui")
+		stealth.Name = "HUI_SAFE_"..math.random(10000,99999)
+		stealth.ResetOnSpawn = false
+		stealth.IgnoreGuiInset = true
+		stealth.Parent = game:GetService("CoreGui")
+		return stealth
+	end
+end
+
+local HUI = SafeHUI() -- UI Hidden kamu siap dipakai
+
 -- Layanan Roblox
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- GUI protection
-local hui = gethui and gethui() or game:GetService("CoreGui")
-
--- Gunakan shared keybind jika ada, default T
 local currentKeybind = shared.SnakeShootKeybind or Enum.KeyCode.T
-
 local player = Players.LocalPlayer
-local abilitiesFolder = player:WaitForChild("PlayerGui"):WaitForChild("InGameUI"):WaitForChild("Bottom"):WaitForChild("Abilities")
 
--- Setup tombol
+-- UI posisi lama
+local abilitiesFolder = player:WaitForChild("PlayerGui")
+	:WaitForChild("InGameUI")
+	:WaitForChild("Bottom")
+	:WaitForChild("Abilities")
+
+-- bikin tombol baru
 local originalButton = abilitiesFolder:WaitForChild("1")
 local snakeShootButton = originalButton:Clone()
 snakeShootButton.Name = "SnakeShoot"
-snakeShootButton.Parent = abilitiesFolder
-snakeShootButton:SetAttribute("HUI_Controlled", true)
-
+snakeShootButton.Parent = HUI  -- bisa kamu ganti ke HUI kalau pengen invisible
 -- Ubah teks & keybind
 local timerLabel = snakeShootButton:FindFirstChild("Timer")
 if timerLabel and timerLabel:IsA("TextLabel") then
